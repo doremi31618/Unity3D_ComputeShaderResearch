@@ -1,0 +1,45 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel FunctionKernel
+#define PI 3.14159265358979323846
+
+RWStructuredBuffer<float3> _Positions;
+float _Step, _Time;
+uint _Resolution;
+
+float2 GetUV (uint3 id){
+    //id : id is a uint3 vector that range from (0-7, 0-7, 0)
+    //id : _Step is a float number that equals to 2 / resolution. 
+    // it is because we want the particles group position at range -1 ~ 1 .
+    // if we use the formula {(id.xy) / resolution } the range would be 0 ~ 1  ,
+    // the center of pattern won't be vector3.zero
+    // if you still don't get it, try to substitute (1,1) , (0.5, 0.5), (0, 0) to id.xy and set resolution to 1 and _step to 2
+    // you will get the (1,1) (0, 0) (-1, -1)
+    return (id.xy + 0.5) * _Step - 1.0;
+    // return (id.xy);
+
+}
+
+
+void SetPosition(uint3 id, float3 position){
+    if (id.x < _Resolution && id.y < _Resolution){
+        _Positions[id.x + id.y * _Resolution] = position;
+    }
+}
+
+float3 Wave (float u, float v, float t)
+{
+    float3 p;
+    p.x = u;
+    p.y = sin(PI * (u + v + t));
+    p.z = v;
+    return p;
+}
+
+//define how many threads of thread group, it would be 8 * 8 * 1 
+[numthreads(8,8,1)]
+void FunctionKernel (uint3 id : SV_DispatchThreadID)
+{
+    // get uv coordinate which id mapping to uv coordinate 
+    float2 uv = GetUV(id);
+    SetPosition(id, Wave(uv.x, uv.y, _Time));
+}

@@ -1,0 +1,49 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel PerlinSea
+#include "noiseSimplex.cginc"
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWStructuredBuffer<float3> _Positions;
+uint _Resolution;
+float _Amplitude;
+float _Speed;
+float _Time;
+float _Step;
+
+//return 0~1 value
+float GetPerlinNoise(float2 uv, float time){
+    return snoise(float2(uv.x,uv.y+(time * 0.5)));
+}
+
+//set the position according to the perlin noise
+float3 PerlinWaveFunction(float2 uv, float t){
+    float3 pos;
+    pos.x = uv.x;
+    pos.y = ((GetPerlinNoise(uv, t)+0.5) * 2 - 1) *  _Amplitude;
+    // pos.y = sin(PI * (uv.x + uv.y + t));
+    pos.z = uv.y;
+    return pos;
+}
+
+//return the float2 which range is from -1 to  1
+float2 GetUV(uint3 id){
+    float2 uv = (id.xy + 0.5) * _Step - 1.0;
+    return uv;
+}
+
+//set the _Position array by given id and pos
+void SetPosition(uint3 id ,float3 pos){
+    if (id.x < _Resolution && id.y < _Resolution){
+        _Positions[id.x + id.y * _Resolution] = pos;
+    }
+}
+
+//main thread 
+[numthreads(8,8,1)]
+void PerlinSea (uint3 id : SV_DispatchThreadID)
+{
+    // TODO: insert actual code here!
+    float2 uv = GetUV(id);
+    SetPosition(id, PerlinWaveFunction(uv, _Time));
+
+}
